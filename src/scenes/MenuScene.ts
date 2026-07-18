@@ -67,11 +67,25 @@ export class MenuScene extends Phaser.Scene {
     });
   }
 
+
   showHelp(): void {
     const cx = this.cameras.main.width / 2;
     const cy = this.cameras.main.height / 2;
     const panel = this.add.container(0, 0).setScrollFactor(0).setDepth(100);
-    panel.add(this.add.rectangle(cx, cy, 500, 280, 0x0f172a, 0.98).setStrokeStyle(2, 0x334155));
+
+    const escKey = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+
+    const closeHelp = () => {
+      escKey.removeAllListeners();
+      panel.destroy();
+    };
+
+    // 全屏半透明遮罩，点击任意位置关闭
+    const overlay = this.add.rectangle(cx, cy, 800, 450, 0x000000, 0.6).setInteractive();
+    overlay.on('pointerdown', () => closeHelp());
+    panel.add(overlay);
+
+    panel.add(this.add.rectangle(cx, cy, 520, 320, 0x0f172a, 0.98).setStrokeStyle(2, 0x334155));
 
     const helpText = [
       '电脑：',
@@ -80,20 +94,26 @@ export class MenuScene extends Phaser.Scene {
       '  Z：释放当前技能',
       '  1/2/3：切换技能',
       '  P：天赋树    I：装备栏',
+      '  ESC：暂停菜单',
       '',
       '手机：左侧摇杆移动/跳跃，右侧按钮攻击/技能',
       '',
-      '目标：闯关、打怪、升级、点天赋、换装备。'
+      '目标：闯关、打怪、升级、点天赋、换装备。',
+      '',
+      '点击任意位置或按 ESC 关闭'
     ].join('\n');
 
-    panel.add(this.add.text(cx, cy - 20, helpText, {
+    panel.add(this.add.text(cx, cy - 10, helpText, {
       fontSize: '11px', color: '#e2e8f0', fontFamily: 'monospace', lineSpacing: 6
     }).setOrigin(0.5));
 
-    const close = this.add.text(cx, cy + 110, '关闭', {
-      fontSize: '12px', color: '#ef4444', fontFamily: 'monospace'
+    const close = this.add.text(cx, cy + 130, '关闭', {
+      fontSize: '14px', color: '#ffffff', fontFamily: 'monospace',
+      backgroundColor: '#ef4444', padding: { x: 40, y: 8 }
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-    close.on('pointerdown', () => panel.destroy());
+    close.on('pointerdown', () => closeHelp());
     panel.add(close);
+
+    escKey.once('down', () => closeHelp());
   }
 }
