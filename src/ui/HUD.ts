@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { Player } from '../entities/Player';
 import { EquipSlot, rarityColor, computeEquipmentStats } from '../systems/Equipment';
+import { computeSkillStats } from '../systems/Gem';
 
 export class HUD {
   scene: Phaser.Scene;
@@ -41,10 +42,21 @@ export class HUD {
     );
 
     const gem = this.player.activeGem;
-    const gems = this.player.gems.map((g, i) =>
-      `${i === this.player.activeGemIndex ? '>' : ' '} ${i + 1}. ${g.name} Lv.${g.level}`
-    ).join('\n');
-    this.gemText.setText(`[Z] 释放技能\n${gems}\n当前: ${gem?.name ?? '无'}\n[1/2/3] 切换`);
+    const gems = this.player.gems.map((g, i) => {
+      const active = i === this.player.activeGemIndex;
+      return `${active ? '>' : ' '} ${i + 1}. ${g.name} Lv.${g.level}`;
+    }).join('\n');
+
+    let gemDetail = '';
+    if (gem) {
+      const stats = computeSkillStats(gem);
+      const supports = gem.supports.length ? ` + ${gem.supports.map(s => s.name).join('/')}` : '';
+      gemDetail = `当前: ${gem.name}${supports}\n伤害 ${Math.floor(stats.damage)}  冷却 ${stats.cooldown.toFixed(1)}s  投射 ${stats.projectileCount}`;
+    } else {
+      gemDetail = '当前: 无技能';
+    }
+
+    this.gemText.setText(`[Z] 释放技能  [1/2/3] 切换\n${gems}\n${gemDetail}`);
   }
 
   drawBars(): void {

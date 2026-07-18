@@ -77,6 +77,13 @@ export function generateTextures(scene: Phaser.Scene): void {
   drawStar(gfx, 8, 8, 5, 7, 3);
   gfx.generateTexture('drop_equip', 16, 16);
 
+  gfx.clear();
+  gfx.fillStyle(0x3b82f6);
+  gfx.fillCircle(8, 8, 5);
+  gfx.fillStyle(0x60a5fa);
+  gfx.fillCircle(8, 8, 2);
+  gfx.generateTexture('drop_xp', 16, 16);
+
   // 背景装饰
   gfx.clear();
   gfx.fillStyle(0x0f172a);

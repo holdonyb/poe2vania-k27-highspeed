@@ -20,6 +20,7 @@ export class Player {
   activeGemIndex = 0;
   equipment: Map<EquipSlot, Equipment> = new Map();
   passiveTree: PassiveTree = new PassiveTree();
+  onLevelUp?: () => void;
 
   baseDamage = 12;
   attackCooldown = 0;
@@ -89,9 +90,9 @@ export class Player {
   ): void {
     const onGround = (this.sprite.body as Phaser.Physics.Arcade.Body).blocked.down;
 
-    const left = cursors.left?.isDown || touch?.left;
-    const right = cursors.right?.isDown || touch?.right;
-    const up = cursors.up?.isDown || touch?.up;
+    const left = cursors.left?.isDown || keys['A']?.isDown || touch?.left;
+    const right = cursors.right?.isDown || keys['D']?.isDown || touch?.right;
+    const up = cursors.up?.isDown || keys['W']?.isDown || touch?.up;
 
     // 左右移动
     if (left) {
@@ -238,13 +239,45 @@ export class Player {
       this.maxHp += 5;
       this.hp = Math.min(this.hp + 15, this.maxHp);
       this.showLevelUp();
+      this.onLevelUp?.();
     }
   }
 
   showLevelUp(): void {
-    const text = this.scene.add.text(this.sprite.x, this.sprite.y - 40, '升级！', {
+    // 屏幕闪烁
+    const flash = this.scene.add.rectangle(
+      this.scene.cameras.main.width / 2,
+      this.scene.cameras.main.height / 2,
+      this.scene.cameras.main.width,
+      this.scene.cameras.main.height,
+      0xfbbf24,
+      0.5
+    ).setScrollFactor(0).setDepth(300);
+    this.scene.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 400,
+      onComplete: () => flash.destroy()
+    });
+
+    // 升级大字
+    const cam = this.scene.cameras.main;
+    const bigText = this.scene.add.text(cam.width / 2, cam.height / 2, 'LEVEL UP', {
+      fontSize: '40px', color: '#fbbf24', fontFamily: 'monospace', fontStyle: 'bold'
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(301);
+    this.scene.tweens.add({
+      targets: bigText,
+      scaleX: 1.2,
+      scaleY: 1.2,
+      alpha: 0,
+      duration: 1200,
+      onComplete: () => bigText.destroy()
+    });
+
+    // 头顶提示
+    const text = this.scene.add.text(this.sprite.x, this.sprite.y - 40, `升级！等级 ${this.level}`, {
       fontSize: '14px', color: '#fbbf24', fontFamily: 'monospace'
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(302);
     this.scene.tweens.add({
       targets: text,
       y: this.sprite.y - 80,
@@ -252,5 +285,20 @@ export class Player {
       duration: 1200,
       onComplete: () => text.destroy()
     });
+
+    // 粒子
+    for (let i = 0; i < 12; i++) {
+      const p = this.scene.add.image(this.sprite.x, this.sprite.y, 'pixel');
+      p.setTint(0xfbbf24);
+      p.setScale(2);
+      this.scene.tweens.add({
+        targets: p,
+        x: this.sprite.x + (Math.random() - 0.5) * 100,
+        y: this.sprite.y + (Math.random() - 0.5) * 100,
+        alpha: 0,
+        duration: 800,
+        onComplete: () => p.destroy()
+      });
+    }
   }
 }
