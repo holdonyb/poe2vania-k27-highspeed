@@ -195,12 +195,21 @@ export class Player {
     const startX = this.sprite.x + direction * 18;
     const startY = this.sprite.y - 2;
 
+    const skillVisuals: Record<string, { texture: string; tint: number; speed: number; scale: number; trailColor: number }> = {
+      fireball: { texture: 'fireball', tint: 0xffffff, speed: 320, scale: 1.2, trailColor: 0xef4444 },
+      ice_shot: { texture: 'ice_shard', tint: 0xffffff, speed: 420, scale: 0.9, trailColor: 0x60a5fa },
+      lightning_strike: { texture: 'lightning', tint: 0xfacc15, speed: 380, scale: 1, trailColor: 0xfacc15 }
+    };
+    const visual = skillVisuals[gem.id] ?? skillVisuals.fireball;
+
     for (let i = 0; i < stats.projectileCount; i++) {
       const spread = stats.projectileCount > 1 ? (i - (stats.projectileCount - 1) / 2) * 0.12 : 0;
       const group = (this.scene as any).playerProjectiles as Phaser.Physics.Arcade.Group;
-      const bullet = group.create(startX, startY + i * 2, 'bullet') as Phaser.Physics.Arcade.Sprite;
+      const bullet = group.create(startX, startY + i * 2, visual.texture) as Phaser.Physics.Arcade.Sprite;
       bullet.setDepth(100);
-      const speed = 340;
+      bullet.setTint(visual.tint);
+      bullet.setScale(visual.scale);
+      const speed = visual.speed;
       const angle = spread;
       bullet.setVelocity(Math.cos(angle) * speed * direction, Math.sin(angle) * speed * 0.25);
       (bullet.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
@@ -210,7 +219,32 @@ export class Player {
       bullet.setData('chain', stats.chain);
       bullet.setData('crit', isCrit);
 
+      // 技能拖尾粒子
+      const trailInterval = this.scene.time.addEvent({
+        delay: 40,
+        callback: () => {
+          if (!bullet.active) {
+            trailInterval.remove();
+            return;
+          }
+          const p = this.scene.add.image(bullet.x, bullet.y, 'pixel');
+          p.setTint(visual.trailColor);
+          p.setScale(1.5);
+          p.setDepth(99);
+          this.scene.tweens.add({
+            targets: p,
+            alpha: 0,
+            scaleX: 0.2,
+            scaleY: 0.2,
+            duration: 250,
+            onComplete: () => p.destroy()
+          });
+        },
+        loop: true
+      });
+
       this.scene.time.delayedCall(1200, () => {
+        trailInterval.remove();
         if (bullet.active) bullet.destroy();
       });
     }

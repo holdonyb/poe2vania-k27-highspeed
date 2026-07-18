@@ -19,12 +19,16 @@ export class HUD {
 
   private saveCallback?: () => void;
   private pauseCallback?: (paused: boolean) => void;
+  private getEnemyCount?: () => number;
+  private isLevelCompleted?: () => boolean;
 
-  constructor(scene: Phaser.Scene, player: Player, saveCallback?: () => void, pauseCallback?: (paused: boolean) => void) {
+  constructor(scene: Phaser.Scene, player: Player, saveCallback?: () => void, pauseCallback?: (paused: boolean) => void, getEnemyCount?: () => number, isLevelCompleted?: () => boolean) {
     this.scene = scene;
     this.player = player;
     this.saveCallback = saveCallback;
     this.pauseCallback = pauseCallback;
+    this.getEnemyCount = getEnemyCount;
+    this.isLevelCompleted = isLevelCompleted;
 
     this.hpBar = scene.add.graphics();
     this.xpBar = scene.add.graphics();
@@ -41,9 +45,13 @@ export class HUD {
 
   update(): void {
     this.drawBars();
+    const enemyCount = this.getEnemyCount ? this.getEnemyCount() : 0;
+    const completed = this.isLevelCompleted ? this.isLevelCompleted() : false;
+    const portalHint = completed ? '出口已开启 →' : (enemyCount > 0 ? `剩余敌人 ${enemyCount}` : '出口即将开启...');
     this.infoText.setText(
       `等级 ${this.player.level}  |  生命 ${Math.ceil(this.player.hp)}/${this.player.maxHp}\n` +
-      `经验 ${this.player.xp}/${this.player.xpToNext}  |  天赋点 ${this.player.passiveTree.points}`
+      `经验 ${this.player.xp}/${this.player.xpToNext}  |  天赋点 ${this.player.passiveTree.points}\n` +
+      portalHint
     );
 
     const gem = this.player.activeGem;

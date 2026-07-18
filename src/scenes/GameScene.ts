@@ -148,15 +148,22 @@ export class GameScene extends Phaser.Scene {
     // this.cameras.main.setZoom(1.8);
 
     // HUD
-    this.hud = new HUD(this, this.player, () => this.saveGame(), (paused) => {
-      if (paused) {
-        this.physics.world.pause();
-        this.tweens.pauseAll();
-      } else {
-        this.physics.world.resume();
-        this.tweens.resumeAll();
-      }
-    });
+    this.hud = new HUD(
+      this,
+      this.player,
+      () => this.saveGame(),
+      (paused) => {
+        if (paused) {
+          this.physics.world.pause();
+          this.tweens.pauseAll();
+        } else {
+          this.physics.world.resume();
+          this.tweens.resumeAll();
+        }
+      },
+      () => this.enemies.length,
+      () => this.levelCompleted
+    );
 
     // 移动端触控
     this.useTouch = this.sys.game.device.os.android || this.sys.game.device.os.iOS || this.sys.game.device.os.windowsPhone || window.matchMedia('(pointer: coarse)').matches;
@@ -331,24 +338,35 @@ export class GameScene extends Phaser.Scene {
     const y = this.levelConfig.height - 80;
     this.exitPortal = this.add.container(x, y);
 
-    const ring = this.add.circle(0, 0, 24, 0x3b82f6, 0.4);
-    const core = this.add.circle(0, 0, 12, 0x60a5fa);
-    const label = this.add.text(0, -40, '出口 →', {
-      fontSize: '12px', color: '#fbbf24', fontFamily: 'monospace'
+    const ring = this.add.circle(0, 0, 36, 0x3b82f6, 0.4);
+    const core = this.add.circle(0, 0, 18, 0x60a5fa);
+    const inner = this.add.circle(0, 0, 8, 0xffffff);
+    const label = this.add.text(0, -55, '出口已开启 →', {
+      fontSize: '14px', color: '#fbbf24', fontFamily: 'monospace', fontStyle: 'bold'
     }).setOrigin(0.5);
 
-    this.exitPortal.add([ring, core, label]);
+    this.exitPortal.add([ring, core, inner, label]);
     this.exitPortal.setDepth(50);
 
     this.tweens.add({
       targets: ring,
-      scaleX: 1.3,
-      scaleY: 1.3,
-      alpha: 0.2,
+      scaleX: 1.4,
+      scaleY: 1.4,
+      alpha: 0.15,
       duration: 800,
       yoyo: true,
       repeat: -1
     });
+
+    this.tweens.add({
+      targets: inner,
+      alpha: 0.4,
+      duration: 400,
+      yoyo: true,
+      repeat: -1
+    });
+
+    this.showToast('出口已开启！前往右侧光门');
 
     // 创建触发区
     const zone = this.add.zone(x, y, 60, 80);

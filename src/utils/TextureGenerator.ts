@@ -45,11 +45,49 @@ export function generateTextures(scene: Phaser.Scene): void {
   gfx.fillRect(0, 0, 32, 3);
   gfx.generateTexture('platform', 32, 32);
 
-  // 子弹
+  // 子弹（通用）
   gfx.clear();
   gfx.fillStyle(0xfacc15);
   gfx.fillCircle(8, 8, 6);
   gfx.generateTexture('bullet', 16, 16);
+
+  // 火球术
+  gfx.clear();
+  gfx.fillStyle(0xef4444);
+  gfx.fillCircle(10, 10, 8);
+  gfx.fillStyle(0xf97316);
+  gfx.fillCircle(10, 10, 5);
+  gfx.fillStyle(0xfacc15);
+  gfx.fillCircle(10, 10, 2);
+  gfx.generateTexture('fireball', 20, 20);
+
+  // 冰霜射击
+  gfx.clear();
+  gfx.fillStyle(0x60a5fa);
+  gfx.beginPath();
+  gfx.moveTo(10, 2);
+  gfx.lineTo(18, 10);
+  gfx.lineTo(10, 18);
+  gfx.lineTo(2, 10);
+  gfx.closePath();
+  gfx.fillPath();
+  gfx.fillStyle(0xffffff);
+  gfx.fillCircle(10, 10, 3);
+  gfx.generateTexture('ice_shard', 20, 20);
+
+  // 闪电打击
+  gfx.clear();
+  gfx.fillStyle(0xfacc15);
+  gfx.beginPath();
+  gfx.moveTo(10, 2);
+  gfx.lineTo(14, 8);
+  gfx.lineTo(9, 8);
+  gfx.lineTo(12, 18);
+  gfx.lineTo(6, 10);
+  gfx.lineTo(11, 10);
+  gfx.closePath();
+  gfx.fillPath();
+  gfx.generateTexture('lightning', 20, 20);
 
   // 近战斩击
   gfx.clear();
