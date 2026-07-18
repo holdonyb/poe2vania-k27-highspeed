@@ -25,6 +25,8 @@ export class Player {
   baseDamage = 12;
   attackCooldown = 0;
   skillCooldown = 0;
+  critChance = 0.05;
+  attackSpeed = 1;
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
     this.scene = scene;
@@ -58,6 +60,8 @@ export class Player {
     this.maxHp = eqStats.maxHp + (passive.maxHp ?? 0);
     this.hp = Math.min(this.hp, this.maxHp);
     this.baseDamage = 12 * (1 + (passive.damageMul ?? 0)) * eqStats.damageMul;
+    this.critChance = eqStats.critChance + (passive.critChance ?? 0);
+    this.attackSpeed = eqStats.attackSpeed * (1 + (passive.attackSpeed ?? 0));
     this.sprite.setVelocityX(this.sprite.body?.velocity.x ?? 0);
   }
 
@@ -121,7 +125,7 @@ export class Player {
 
     // 技能
     this.skillCooldown = Math.max(0, this.skillCooldown - delta / 1000);
-    if ((keys['Z']?.isDown || touch?.skill) && this.activeGem) {
+    if (((keys['Z']?.isDown && this.skillCooldown <= 0) || touch?.skill) && this.activeGem) {
       this.castSkill(time);
     }
 
@@ -139,36 +143,44 @@ export class Player {
   }
 
   meleeAttack(_time: number): void {
-    this.attackCooldown = 0.35;
-    const slashX = this.sprite.x + (this.facingRight ? 24 : -24);
+    this.attackCooldown = Math.max(0.12, 0.35 / Math.max(0.5, this.attackSpeed));
+    const slashX = this.sprite.x + (this.facingRight ? 28 : -28);
     const slash = this.scene.add.sprite(slashX, this.sprite.y, 'slash');
     slash.setFlipX(!this.facingRight);
-    slash.setScale(1.2);
+    slash.setScale(1.4);
     slash.setDepth(10);
 
     this.scene.tweens.add({
       targets: slash,
       alpha: 0,
-      scaleX: 1.5,
-      scaleY: 1.5,
+      scaleX: 1.8,
+      scaleY: 1.8,
       duration: 120,
       onComplete: () => slash.destroy()
     });
 
-    // 命中检测
-    const enemies = (this.scene as any).enemies as Array<{ sprite: Phaser.Physics.Arcade.Sprite; takeDamage: (d: number) => void }>;
+    // 命中检测（扇形范围）
+    const enemies = (this.scene as any).enemies as Array<{ sprite: Phaser.Physics.Arcade.Sprite; takeDamage: (d: number, crit?: boolean) => void }>;
     if (enemies) {
       for (const enemy of enemies) {
         const dx = enemy.sprite.x - this.sprite.x;
         const dy = enemy.sprite.y - this.sprite.y;
-        if (Math.abs(dx) < 48 && Math.abs(dy) < 32) {
-          if ((this.facingRight && dx > 0) || (!this.facingRight && dx < 0)) {
-            enemy.takeDamage(this.baseDamage * this.totalDamageMul);
+        if (Math.abs(dx) < 52 && Math.abs(dy) < 36) {
+          if ((this.facingRight && dx > -8) || (!this.facingRight && dx < 8)) {
+            let damage = this.baseDamage * this.totalDamageMul;
+            const isCrit = Math.random() < this.critChance;
+            if (isCrit) {
+              damage *= 2;
+            }
+            enemy.takeDamage(damage, isCrit);
             this.spawnHitParticles(enemy.sprite.x, enemy.sprite.y);
           }
         }
       }
     }
+
+    // 轻微屏幕震动
+    this.scene.cameras.main.shake(60, 0.005);
   }
 
   castSkill(time: number): void {
@@ -185,14 +197,18 @@ export class Player {
 
     for (let i = 0; i < stats.projectileCount; i++) {
       const spread = stats.projectileCount > 1 ? (i - (stats.projectileCount - 1) / 2) * 0.12 : 0;
-      const bullet = this.scene.physics.add.sprite(startX, startY + i * 2, 'bullet');
-      const speed = 320;
+      const group = (this.scene as any).playerProjectiles as Phaser.Physics.Arcade.Group;
+      const bullet = group.create(startX, startY + i * 2, 'bullet') as Phaser.Physics.Arcade.Sprite;
+      bullet.setDepth(100);
+      const speed = 340;
       const angle = spread;
-      bullet.setVelocity(Math.cos(angle) * speed * direction, Math.sin(angle) * speed * 0.2);
-      bullet.setData('damage', stats.damage * this.totalDamageMul);
+      bullet.setVelocity(Math.cos(angle) * speed * direction, Math.sin(angle) * speed * 0.25);
+      (bullet.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+      const isCrit = Math.random() < this.critChance;
+      bullet.setData('damage', stats.damage * this.totalDamageMul * (isCrit ? 2 : 1));
       bullet.setData('pierce', stats.pierce);
       bullet.setData('chain', stats.chain);
-      (this.scene as any).playerProjectiles.add(bullet);
+      bullet.setData('crit', isCrit);
 
       this.scene.time.delayedCall(1200, () => {
         if (bullet.active) bullet.destroy();

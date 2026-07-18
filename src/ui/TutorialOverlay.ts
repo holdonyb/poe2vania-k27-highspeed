@@ -40,16 +40,19 @@ export class TutorialOverlay {
       fontSize: '12px', color: '#e2e8f0', fontFamily: 'monospace', lineSpacing: 8, align: 'center'
     }).setOrigin(0.5));
 
-    const btn = scene.add.rectangle(cx, cy + 130, 160, 40, 0x3b82f6).setInteractive({ useHandCursor: true });
-    const btnText = scene.add.text(cx, cy + 130, '开始游戏', {
-      fontSize: '14px', color: '#ffffff', fontFamily: 'monospace'
+    const btn = scene.add.text(cx, cy + 130, '点击任意位置开始游戏', {
+      fontSize: '16px', color: '#ffffff', fontFamily: 'monospace', backgroundColor: '#3b82f6', padding: { x: 20, y: 8 }
     }).setOrigin(0.5);
-    btn.on('pointerover', () => btn.setFillStyle(0x60a5fa));
-    btn.on('pointerout', () => btn.setFillStyle(0x3b82f6));
-    btn.on('pointerdown', () => {
+    panel.add(btn);
+
+    // 点击屏幕任意位置关闭教程
+    const overlay = scene.add.rectangle(cx, cy, 800, 450, 0x000000, 0.01).setScrollFactor(0).setInteractive();
+    overlay.on('pointerdown', () => {
+      overlay.destroy();
       panel.destroy();
       onComplete();
     });
-    panel.add([btn, btnText]);
+    panel.add(overlay);
+    panel.sendToBack(overlay);
   }
 }

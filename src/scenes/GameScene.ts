@@ -16,6 +16,7 @@ export class GameScene extends Phaser.Scene {
   drops!: Phaser.Physics.Arcade.Group;
   playerProjectiles!: Phaser.Physics.Arcade.Group;
   enemyProjectiles!: Phaser.Physics.Arcade.Group;
+  enemyGroup!: Phaser.Physics.Arcade.Group;
   hud!: HUD;
   touchControls?: TouchControls;
   useTouch = false;
@@ -31,6 +32,8 @@ export class GameScene extends Phaser.Scene {
   exitPortal?: Phaser.GameObjects.Container;
   paused = false;
   pausePanel?: Phaser.GameObjects.Container;
+  playerDead = false;
+  deathUI?: Phaser.GameObjects.Container;
 
   constructor() {
     super({ key: 'GameScene' });
@@ -47,6 +50,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.playerDead = false;
+    this.deathUI?.destroy();
+    this.deathUI = undefined;
+
     const cfg = this.levelConfig;
     this.physics.world.setBounds(0, 0, cfg.width, cfg.height);
 
@@ -64,6 +71,7 @@ export class GameScene extends Phaser.Scene {
       if (save) {
         SaveManager.applyToPlayer(this.player, save);
         this.player.recalcStats();
+        if (this.player.hp <= 0) this.player.hp = this.player.maxHp;
       }
     }
     this.player.sprite.setCollideWorldBounds(true);
@@ -82,22 +90,26 @@ export class GameScene extends Phaser.Scene {
     this.keys['TWO'] = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.TWO);
     this.keys['THREE'] = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.THREE);
     this.keys['ESC'] = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
+    this.keys['R'] = this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.R);
 
     // 掉落物和子弹
     this.drops = this.physics.add.group({ allowGravity: true, bounceY: 0.3 });
     this.playerProjectiles = this.physics.add.group();
     this.enemyProjectiles = this.physics.add.group();
+    this.enemyGroup = this.physics.add.group();
 
     // 碰撞：子弹 vs 敌人
-    this.physics.add.overlap(this.playerProjectiles, this.enemies.map(e => e.sprite), (proj, enemySprite) => {
+    this.physics.add.overlap(this.playerProjectiles, this.enemyGroup, (proj, enemySprite) => {
       const enemy = this.enemies.find(e => e.sprite === enemySprite);
       if (!enemy) return;
-      const damage = (proj as Phaser.Physics.Arcade.Sprite).getData('damage') as number ?? 10;
-      enemy.takeDamage(damage);
+      const projectile = proj as Phaser.Physics.Arcade.Sprite;
+      const damage = projectile.getData('damage') as number ?? 10;
+      const isCrit = !!projectile.getData('crit');
+      enemy.takeDamage(damage, isCrit);
 
-      const pierce = (proj as Phaser.Physics.Arcade.Sprite).getData('pierce') as boolean;
+      const pierce = projectile.getData('pierce') as boolean;
       if (!pierce) {
-        (proj as Phaser.Physics.Arcade.Sprite).destroy();
+        projectile.destroy();
       }
     });
 
@@ -117,7 +129,7 @@ export class GameScene extends Phaser.Scene {
     });
 
     // 碰撞：玩家 vs 敌人
-    this.physics.add.overlap(this.player.sprite, this.enemies.map(e => e.sprite), (_, enemySprite) => {
+    this.physics.add.overlap(this.player.sprite, this.enemyGroup, (_, enemySprite) => {
       const enemy = this.enemies.find(e => e.sprite === enemySprite);
       if (enemy) this.player.takeDamage(enemy.damage);
     });
@@ -133,10 +145,18 @@ export class GameScene extends Phaser.Scene {
     // 相机
     this.cameras.main.setBounds(0, 0, cfg.width, cfg.height);
     this.cameras.main.startFollow(this.player.sprite, true, 0.1, 0.1);
-    this.cameras.main.setZoom(1.8);
+    // this.cameras.main.setZoom(1.8);
 
     // HUD
-    this.hud = new HUD(this, this.player);
+    this.hud = new HUD(this, this.player, () => this.saveGame(), (paused) => {
+      if (paused) {
+        this.physics.world.pause();
+        this.tweens.pauseAll();
+      } else {
+        this.physics.world.resume();
+        this.tweens.resumeAll();
+      }
+    });
 
     // 移动端触控
     this.useTouch = this.sys.game.device.os.android || this.sys.game.device.os.iOS || this.sys.game.device.os.windowsPhone || window.matchMedia('(pointer: coarse)').matches;
@@ -199,6 +219,7 @@ export class GameScene extends Phaser.Scene {
     for (const spawn of cfg.enemySpawns) {
       const enemy = new Enemy(this, spawn.x, spawn.y, spawn.level, spawn.type as EnemyType);
       this.enemies.push(enemy);
+      this.enemyGroup.add(enemy.sprite);
       this.physics.add.collider(enemy.sprite, this.platforms);
       this.physics.add.collider(enemy.sprite, this.walls);
     }
@@ -206,6 +227,7 @@ export class GameScene extends Phaser.Scene {
     if (cfg.isBoss && cfg.boss) {
       const boss = new Boss(this, cfg.boss.x, cfg.boss.y, cfg.boss.level, cfg.boss.name);
       this.enemies.push(boss);
+      this.enemyGroup.add(boss.sprite);
       this.physics.add.collider(boss.sprite, this.platforms);
       this.physics.add.collider(boss.sprite, this.walls);
 
@@ -356,14 +378,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   createPauseButton(x: number, y: number, label: string, onClick: () => void): void {
-    const rect = this.add.rectangle(x, y, 220, 40, 0x3b82f6).setInteractive({ useHandCursor: true });
     const text = this.add.text(x, y, label, {
-      fontSize: '13px', color: '#ffffff', fontFamily: 'monospace'
+      fontSize: '13px', color: '#ffffff', fontFamily: 'monospace',
+      backgroundColor: '#3b82f6', padding: { x: 60, y: 8 }
     }).setOrigin(0.5);
-    rect.on('pointerover', () => rect.setFillStyle(0x60a5fa));
-    rect.on('pointerout', () => rect.setFillStyle(0x3b82f6));
-    rect.on('pointerdown', onClick);
-    this.pausePanel?.add([rect, text]);
+    text.setInteractive({ useHandCursor: true });
+    text.on('pointerover', () => text.setBackgroundColor('#60a5fa'));
+    text.on('pointerout', () => text.setBackgroundColor('#3b82f6'));
+    text.on('pointerdown', onClick);
+    this.pausePanel?.add(text);
   }
 
   resumeGame(): void {
@@ -391,19 +414,39 @@ export class GameScene extends Phaser.Scene {
   update(time: number, delta: number): void {
     if (this.paused) return;
 
-    if (this.player.hp <= 0) {
-      this.saveGame();
-      this.add.rectangle(this.cameras.main.width / 2, this.cameras.main.height / 2, 800, 450, 0x000000, 0.8).setScrollFactor(0).setDepth(300);
-      this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2, '你死了\n按 R 重新开始\n按 ESC 返回菜单', {
-        fontSize: '24px', color: '#ef4444', fontFamily: 'monospace', align: 'center'
-      }).setOrigin(0.5).setScrollFactor(0).setDepth(301);
-      if (Phaser.Input.Keyboard.JustDown(this.input.keyboard!.addKey(Phaser.Input.Keyboard.KeyCodes.R))) {
+    if (this.playerDead) {
+      if (Phaser.Input.Keyboard.JustDown(this.keys['R'])) {
         this.scene.restart();
+        return;
+      }
+      if (Phaser.Input.Keyboard.JustDown(this.keys['ESC'])) {
+        this.scene.start('MenuScene');
+        return;
       }
       return;
     }
 
+    if (this.player.hp <= 0) {
+      this.playerDead = true;
+      this.physics.world.pause();
+      this.tweens.pauseAll();
+      this.deathUI = this.add.container(0, 0).setScrollFactor(0).setDepth(300);
+      this.deathUI.add(this.add.rectangle(this.cameras.main.width / 2, this.cameras.main.height / 2, 800, 450, 0x000000, 0.8));
+      this.deathUI.add(this.add.text(this.cameras.main.width / 2, this.cameras.main.height / 2, '你死了\n按 R 重新开始\n按 ESC 返回菜单', {
+        fontSize: '24px', color: '#ef4444', fontFamily: 'monospace', align: 'center'
+      }).setOrigin(0.5));
+      return;
+    }
+
     if (Phaser.Input.Keyboard.JustDown(this.keys['ESC'])) {
+      if (this.hud.showingPassive) {
+        this.hud.togglePassiveTree();
+        return;
+      }
+      if (this.hud.showingEquip) {
+        this.hud.toggleEquipPanel();
+        return;
+      }
       if (this.paused) this.resumeGame();
       else this.openPauseMenu();
       return;

@@ -43,18 +43,18 @@ export class LevelSelectScene extends Phaser.Scene {
 
   createLevelNode(x: number, y: number, level: LevelConfig, unlocked: boolean): void {
     const color = level.isBoss ? 0xef4444 : (unlocked ? 0x3b82f6 : 0x334155);
-    const circle = this.add.circle(x, y, 36, color, unlocked ? 1 : 0.4).setScrollFactor(0);
-    if (unlocked) circle.setInteractive({ useHandCursor: true });
+    this.add.circle(x, y, 36, color, unlocked ? 1 : 0.4).setScrollFactor(0);
 
     const label = level.isBoss ? 'BOSS' : level.name;
-    this.add.text(x, y, label, {
+    const text = this.add.text(x, y, label, {
       fontSize: '11px', color: unlocked ? '#ffffff' : '#64748b', fontFamily: 'monospace', align: 'center'
     }).setOrigin(0.5).setScrollFactor(0);
 
     if (unlocked) {
-      circle.on('pointerover', () => circle.setFillStyle(0x60a5fa));
-      circle.on('pointerout', () => circle.setFillStyle(color));
-      circle.on('pointerdown', () => {
+      text.setInteractive({ useHandCursor: true });
+      text.on('pointerover', () => text.setColor('#fbbf24'));
+      text.on('pointerout', () => text.setColor('#ffffff'));
+      text.on('pointerdown', () => {
         this.scene.start('GameScene', { levelId: level.id });
       });
     }

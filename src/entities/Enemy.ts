@@ -102,23 +102,26 @@ export class Enemy {
   }
 
   shoot(playerSprite: Phaser.Physics.Arcade.Sprite): void {
-    const bullet = this.scene.physics.add.sprite(this.sprite.x, this.sprite.y, 'bullet');
+    const group = (this.scene as any).enemyProjectiles as Phaser.Physics.Arcade.Group | undefined;
+    const bullet = group?.create(this.sprite.x, this.sprite.y, 'bullet') as Phaser.Physics.Arcade.Sprite | undefined
+      ?? this.scene.physics.add.sprite(this.sprite.x, this.sprite.y, 'bullet');
     bullet.setTint(0x22c55e);
+    (bullet.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
     const angle = Math.atan2(playerSprite.y - this.sprite.y, playerSprite.x - this.sprite.x);
     bullet.setVelocity(Math.cos(angle) * 180, Math.sin(angle) * 180);
     bullet.setData('damage', this.damage * 0.7);
-    (this.scene as any).enemyProjectiles?.add(bullet);
+    if (!group) (this.scene as any).enemyProjectiles?.add(bullet);
     this.scene.time.delayedCall(2000, () => bullet.destroy());
   }
 
-  takeDamage(amount: number): void {
+  takeDamage(amount: number, isCrit = false): void {
     this.hp -= amount;
     this.stun = 0.15;
     this.sprite.setTint(0xffaaaa);
     this.scene.time.delayedCall(100, () => this.sprite.clearTint());
 
     const text = this.scene.add.text(this.sprite.x, this.sprite.y - 24, Math.floor(amount).toString(), {
-      fontSize: '10px', color: '#ffffff', fontFamily: 'monospace'
+      fontSize: isCrit ? '14px' : '10px', color: isCrit ? '#fbbf24' : '#ffffff', fontFamily: 'monospace', fontStyle: isCrit ? 'bold' : 'normal'
     }).setOrigin(0.5);
     this.scene.tweens.add({
       targets: text,

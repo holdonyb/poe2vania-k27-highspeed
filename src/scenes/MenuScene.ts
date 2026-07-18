@@ -26,7 +26,7 @@ export class MenuScene extends Phaser.Scene {
         y: cy - 30,
         disabled: !hasSave,
         onClick: () => {
-          this.scene.start('LevelSelectScene', { continueGame: true });
+          this.scene.start('GameScene', { continueGame: true });
         }
       },
       {
@@ -50,18 +50,19 @@ export class MenuScene extends Phaser.Scene {
   }
 
   createButton(x: number, y: number, label: string, onClick: () => void, disabled = false): void {
-    const color = disabled ? 0x334155 : 0x3b82f6;
-    const rect = this.add.rectangle(x, y, 200, 44, color, disabled ? 0.5 : 1).setScrollFactor(0).setInteractive(!disabled);
-    this.add.text(x, y, label, {
-      fontSize: '14px', color: disabled ? '#94a3b8' : '#ffffff', fontFamily: 'monospace'
+    const bgColor = disabled ? '#334155' : '#3b82f6';
+    const text = this.add.text(x, y, label, {
+      fontSize: '14px', color: disabled ? '#94a3b8' : '#ffffff', fontFamily: 'monospace',
+      backgroundColor: bgColor, padding: { x: 50, y: 10 }
     }).setOrigin(0.5).setScrollFactor(0);
 
     if (disabled) return;
 
-    rect.on('pointerover', () => rect.setFillStyle(0x60a5fa));
-    rect.on('pointerout', () => rect.setFillStyle(color));
-    rect.on('pointerdown', () => {
-      rect.setFillStyle(0x1d4ed8);
+    text.setInteractive({ useHandCursor: true });
+    text.on('pointerover', () => text.setBackgroundColor('#60a5fa'));
+    text.on('pointerout', () => text.setBackgroundColor(bgColor));
+    text.on('pointerdown', () => {
+      text.setBackgroundColor('#1d4ed8');
       onClick();
     });
   }

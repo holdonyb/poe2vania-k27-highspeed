@@ -76,13 +76,14 @@ export class Boss extends Enemy {
 
   shootProjectiles(playerSprite: Phaser.Physics.Arcade.Sprite): void {
     const angle = Math.atan2(playerSprite.y - this.sprite.y, playerSprite.x - this.sprite.x);
+    const group = (this.scene as any).enemyProjectiles as Phaser.Physics.Arcade.Group;
     for (let i = -1; i <= 1; i++) {
-      const bullet = this.scene.physics.add.sprite(this.sprite.x, this.sprite.y, 'bullet');
+      const bullet = group.create(this.sprite.x, this.sprite.y, 'bullet') as Phaser.Physics.Arcade.Sprite;
       bullet.setTint(0xff0000);
+      (bullet.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
       const a = angle + i * 0.25;
       bullet.setVelocity(Math.cos(a) * 200, Math.sin(a) * 200);
       bullet.setData('damage', this.damage);
-      (this.scene as any).enemyProjectiles.add(bullet);
       this.scene.time.delayedCall(2000, () => bullet.destroy());
     }
   }

@@ -17,9 +17,14 @@ export class HUD {
   showingPassive = false;
   showingEquip = false;
 
-  constructor(scene: Phaser.Scene, player: Player) {
+  private saveCallback?: () => void;
+  private pauseCallback?: (paused: boolean) => void;
+
+  constructor(scene: Phaser.Scene, player: Player, saveCallback?: () => void, pauseCallback?: (paused: boolean) => void) {
     this.scene = scene;
     this.player = player;
+    this.saveCallback = saveCallback;
+    this.pauseCallback = pauseCallback;
 
     this.hpBar = scene.add.graphics();
     this.xpBar = scene.add.graphics();
@@ -85,8 +90,13 @@ export class HUD {
   togglePassiveTree(): void {
     if (this.showingEquip) this.toggleEquipPanel();
     this.showingPassive = !this.showingPassive;
-    if (this.showingPassive) this.openPassiveTree();
-    else this.passivePanel?.destroy();
+    if (this.showingPassive) {
+      this.openPassiveTree();
+      this.pauseCallback?.(true);
+    } else {
+      this.passivePanel?.destroy();
+      this.pauseCallback?.(false);
+    }
   }
 
   openPassiveTree(): void {
@@ -134,6 +144,7 @@ export class HUD {
       circle.on('pointerdown', () => {
         if (tree.allocate(node.id)) {
           this.player.recalcStats();
+          this.saveCallback?.();
           this.passivePanel?.destroy();
           this.openPassiveTree();
         }
@@ -159,8 +170,13 @@ export class HUD {
   toggleEquipPanel(): void {
     if (this.showingPassive) this.togglePassiveTree();
     this.showingEquip = !this.showingEquip;
-    if (this.showingEquip) this.openEquipPanel();
-    else this.equipPanel?.destroy();
+    if (this.showingEquip) {
+      this.openEquipPanel();
+      this.pauseCallback?.(true);
+    } else {
+      this.equipPanel?.destroy();
+      this.pauseCallback?.(false);
+    }
   }
 
   openEquipPanel(): void {

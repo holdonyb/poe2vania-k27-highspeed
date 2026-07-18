@@ -48,8 +48,8 @@ export function generateTextures(scene: Phaser.Scene): void {
   // 子弹
   gfx.clear();
   gfx.fillStyle(0xfacc15);
-  gfx.fillCircle(6, 6, 5);
-  gfx.generateTexture('bullet', 12, 12);
+  gfx.fillCircle(8, 8, 6);
+  gfx.generateTexture('bullet', 16, 16);
 
   // 近战斩击
   gfx.clear();
